@@ -1,0 +1,4 @@
+id:int:primary
+name:char:
+email:char:
+parent:char:

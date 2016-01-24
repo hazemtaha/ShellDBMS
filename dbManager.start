@@ -1,0 +1,20 @@
+#!/bin/ksh93
+source /home/$LOGNAME/ShellProject/functions.sh
+# current user
+export CURUSER=''
+######################################
+print "Please enter username"
+read username
+print "Please enter password"
+read password
+# validate the user input 
+if test `grep $username /home/kan/ShellProject/usersInfo | cut -f2 -d: | grep -x $password`
+then 
+	clear
+	CURUSER=$username
+	mainMenu
+else
+	print 'not welcome'
+fi
+######################################
+
