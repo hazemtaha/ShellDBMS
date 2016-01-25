@@ -1,6 +1,9 @@
 #! /bin/ksh93
 # current selected database
 $CURDB
+# Reminder :
+# 1- Refer to the insert function for the solution for multiple condition in if statement using [[ ]]
+#############################################################  
 # TODO
 # 1- in createTbl function add more checks and validation on column name 
 #    like if the column name is the same as existing one etc
@@ -230,8 +233,8 @@ function createTbl
 	# write the table name, number of column and user created the table to the database global .meta file
 	echo $tblName':'$columnsNo':'$CURUSER >> /home/$LOGNAME/ShellProject/$CURDB/$CURDB'.meta'
 	# creates .meta file for table metadata and .data file for the data
-	touch $tblName'.meta' /home/$LOGNAME/ShellProject/$CURDB
-	touch $tblName'.data' /home/$LOGNAME/ShellProject/$CURDB
+	touch /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'
+	touch /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data'
 	# write every columns and it's datatype to the table.meta file  
 	for column in ${columnsArr[@]}
 	do
@@ -421,7 +424,99 @@ function delCol
 	read -s -n 1
 	alterTbl
 }
-############
+#################### insert #########################
+function insert 
+{
+	clear
+	print 'Enter table name ?'
+	read tblName
+	# if found the given table name in the data base 
+	if [[ `grep $tblName /home/$LOGNAME/ShellProject/$CURDB/$CURDB'.meta'` ]];	then
+	# loop over all columns names in the given table 
+		for column in `cut -d: -f1 /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'`
+		do
+	# infinite loop over the proccess of inserting values to ensure the user write the right value with the right datatype
+			while true 
+			do
+	# this is a flag for the check on uniqueness of primary key values if the given value is not unique it'll be true 
+				found='false'
+	# get the datatype of current column for further checks
+				colDt=`sed -n "/^\<$column\>/p" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | cut -d: -f2`
+				clear
+	# [-n] prevents echo to draw new line after printing so that it'll be like a prompt 
+	# it'll print the current column name to insert into and it's datatype
+				echo -n "$column [$colDt] = "
+				read value
+	# if the the value given matched the datatype of the column
+	# i found a soulution to use multiple conditions without having to use [test]
+	# now i can surrond every condition with [[ condition ]] and add any operator then other condition [[ condition ]]
+				if [[ "$value" == +([0-9]) ]] && [[ "$colDt" == 'int' ]]; then
+	# checks if the current column is the primary key columns for further operations
+					if [[ `sed -n "/^\<$column\>/p" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | cut -d: -f3` ]]; then
+	# get the primary key column number in the table (i'll use that to be able check it's values later) 
+						pColNum=`sed -n "/^\<$column\>/=" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'`
+	# loop over the existing values of the primary key column in the table
+						for pVal in `cut -d: -f"$pColNum" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data'`
+						do
+	# checks if the value given is already exist in the primary key column
+							if [[ $value = $pVal ]]; then
+	# set [found] to true if the value already exist
+								found='true'
+	# break the inner for loop 
+								break
+							fi
+						done
+					fi
+	# if value exists
+					if [[ $found = 'true' ]]; then
+						print 'You must enter unique value in primary key column'
+						read -s -n 1
+	# ask again for a value
+						continue
+					else
+	# if all good append the value to the values array and break out the while loop
+						values+=("$value")
+						break
+					fi
+	# same as above block of code but with [char] datatype
+				elif [[ "$value" == +([0-9|a-z|A-Z|@|-|_|.]) ]] && [[ "$colDt" == 'char' ]]; then
+					if [[ `sed -n "/^\<$column\>/p" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | cut -d: -f3` ]]; then
+						pColNum=`sed -n "/^\<$column\>/=" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'`
+						for pVal in `cut -d: -f"$pColNum" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data'`
+						do
+							if [[ $value = $pVal ]]; then
+								found='true'
+								break
+							fi
+						done
+					fi
+					if [[ $found = 'true' ]]; then
+						print 'You must enter unique value in primary key column'
+						read -s -n 1
+						continue
+					else
+						values+=("$value")
+						break	
+					fi
+				else
+					print 'Invalid datatype'
+					read -s -n 1
+					continue
+				fi
+			done
+		done	
+	# write the new added row in the table .data file 
+	# first echo will echo the whole array in one line with space seperator between each element
+	# [tr ' ' ':'] will remove every space in the line and add [:] as a delimiter 
+	# then append the result in the table .data file as a new record 
+		echo ${values[@]} | tr ' ' ':' >> /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data'
+		print 'All good, press any key to go back'
+		read -s -n 1
+	else
+		print 'Invalid table name !!'	
+	fi	
+	tblQuery
+}
 ############## database specific operations menus ################
 ############ alter table menu ##############
 function alterTbl
@@ -467,7 +562,7 @@ function tblQuery
 	do
 		case $option in 
 			"Insert" )
-								
+				insert						
 				break
 			;;
 			"Update" )

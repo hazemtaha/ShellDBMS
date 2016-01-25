@@ -1,3 +1,4 @@
 id:int:primary
 name:char:
-identification:int:
+gender:int:
+email:char:
