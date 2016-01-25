@@ -11,6 +11,7 @@ $CURDB
 # 3- checks when creating table if it's already exist (done)
 # 4- checks when creating database if it's already exist (done)
 # 5- ask the user if he wants to insert again instead of exiting after finishing editing
+# 6- in select all try to make a better looking output [customize font size and color and table borders]
 ################# main menu functions ###################
 ################## Creating the database####################
 function createDb
@@ -675,6 +676,86 @@ function updateRec
 	fi
 	tblQuery
 }
+############## select all function ########################
+function selectAll
+{
+	print 'Enter table name ?'
+	read tblName
+	# checks if the table exists
+	if [[ `cut -f1 -d: /home/$LOGNAME/ShellProject/$CURDB/$CURDB'.meta' | grep -x $tblName` ]];	then
+		clear
+	# [cut] will get the columns names from the table .meta file but every name will be represented in seprate line
+	# so using [tr '\n' ':'] will compress all the rows in one line [:] delimited 
+		header=`cut -f1 -d: /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | tr '\n' ':'`
+	# add the column names to the first line of the table .meta file 
+	# and then user [ column ] command to convert the whole file to table like output 
+	# [-s] is the delimiter in the file , [-t] to determine the number of columns and create the table like output
+		sed '1i'"$header" /home/kan/ShellProject/$CURDB/$tblName'.data' | column -s: -t 
+	else
+		print 'Table dosent exist'
+	fi
+	read -s -n 1
+	selectMenu
+}
+############## select row ################
+function selectRow
+{
+	clear
+	print 'Enter table name ?'
+	read tblName
+	# checks if the table exists
+	if [[ `cut -f1 -d: /home/$LOGNAME/ShellProject/$CURDB/$CURDB'.meta' | grep -x $tblName` ]];	then
+		while true
+		do
+			clear
+			print 'Enter column name ?'
+			read colName
+	# see if the column name provided is exist 
+			if [[ `cut -f1 -d: /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | grep -x $colName` ]]; then
+	# get the column data type for further use
+				colDt=`sed -n "/^\<$colName\>/p" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | cut -d: -f2`
+	# get the column number in the table 
+				colNum=`sed -n "/^\<$colName\>/=" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'`
+				print 'enter a value to match ?'
+	# print column name aside with it's data type to help the user determine what to write 
+				echo -n "$colName [$colDt] : "
+	# the value to search with 
+				read value
+	# search with the value and get the matched row numbers 
+				toSlctRowNum=`cut -f"$colNum" -d:  /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data' | sed -n "/^\<$value\>/="`
+	# if found any matched records
+				if [[ "$toSlctRowNum" ]]; then
+	# loop over the [ toSlctRowNum ] just in case a multiple rows matched the value
+					for lineNum in ${toSlctRowNum[@]}
+					do
+	# append line numbers + [p;] in [ lineNumbers ] variable so that i can use them in sed to print
+						lineNumbers="$lineNumbers""$lineNum"'p;'
+					done
+					clear
+	# [cut] will get the columns names from the table .meta file but every name will be represented in seprate line
+	# so using [tr '\n' ':'] will compress all the rows in one line [:] delimited 
+					header=`cut -f1 -d: /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | tr '\n' ':'`
+	# get the matched records from the table .data file then insert table headers then convert them to a table like
+					sed -n "$lineNumbers"  /home/kan/ShellProject/$CURDB/$tblName'.data'| sed '1i'"$header" | column -s: -t
+	# empty the lineNumbers variable
+					lineNumbers=''
+					break
+				else
+					print 'No records matched the given value, nothing deleted'
+					break
+				fi
+			else
+				print 'Invalid column name'
+				read -s -n 1
+				continue
+			fi
+		done
+	else
+		print 'Invalid table name !!'
+	fi
+	read -s -n 1
+	selectMenu		
+}
 ############## database specific operations menus ################
 ############ alter table menu ##############
 function alterTbl
@@ -738,6 +819,37 @@ function delMenue
 		esac
 	done
 }
+############ select menu ##############
+function selectMenu
+{
+	clear
+	# change the prompt 
+	PS3='Please enter your choice : '
+	# menu options 
+	options=("Select All" "Select Row" "Exit")
+	# drawing the menu
+	select option in "${options[@]}"
+	do
+		case $option in 
+			"Select All" )
+				selectAll					
+				break
+			;;
+			"Select Row" )
+				selectRow
+				break
+			;;
+			"Exit" )
+				clear
+				tblQuery
+				break
+			;;
+			* ) 
+				echo 'not a valid option'
+			;;
+		esac
+	done
+}
 ############ table Queries menu ################
 function tblQuery
 {
@@ -763,7 +875,7 @@ function tblQuery
 				break
 			;;
 			"Select" )
-				
+				selectMenu
 				break
 			;;
 			"Exit" )
@@ -784,7 +896,7 @@ function dbMenu
 	# change the prompt 
 	PS3='Please enter your choice : '
 	# menu options 
-	options=("Create table" "List tables" "List table" "Alter table" "Drop table" "Query Table" "Exit")
+	options=("Create table" "List tables" "Describe table" "Alter table" "Drop table" "Query Table" "Exit")
 	# drawing the menu
 	select option in "${options[@]}"
 	do
@@ -797,7 +909,7 @@ function dbMenu
 				listTbls
 				break
 			;;
-			"List table" )
+			"Describe table" )
 				listTbl
 				break
 			;;
