@@ -8,6 +8,9 @@ $CURDB
 # 1- in createTbl function add more checks and validation on column name 
 #    like if the column name is the same as existing one etc
 # 2- also validate on the table name on createTbl function
+# 3- checks when creating table if it's already exist 
+# 4- checks when creating database if it's already exist
+# 5- ask the user if he wants to insert again instead of exiting after finishing editing
 ################# main menu functions ###################
 ################## Creating the database####################
 function createDb
@@ -433,6 +436,7 @@ function insert
 	# if found the given table name in the data base 
 	if [[ `grep $tblName /home/$LOGNAME/ShellProject/$CURDB/$CURDB'.meta'` ]];	then
 	# loop over all columns names in the given table 
+
 		for column in `cut -d: -f1 /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'`
 		do
 	# infinite loop over the proccess of inserting values to ensure the user write the right value with the right datatype
@@ -509,13 +513,101 @@ function insert
 	# first echo will echo the whole array in one line with space seperator between each element
 	# [tr ' ' ':'] will remove every space in the line and add [:] as a delimiter 
 	# then append the result in the table .data file as a new record 
+
 		echo ${values[@]} | tr ' ' ':' >> /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data'
+	# empty the values array 
+	# when i didnt empty the array it actually get declared once per script run so it holds all prevous values
+	# as well the current so when i write in the file it writes all not the current values only 
+		values=()
 		print 'All good, press any key to go back'
 		read -s -n 1
 	else
 		print 'Invalid table name !!'	
 	fi	
 	tblQuery
+}
+############### delete recods #################
+############# delete all records in a table ###############
+function deleteAll
+{
+	clear
+	print 'Enter table name ?'
+	read tblName
+	# checks if the table exists
+	if [[ `cut -f1 -d: /home/$LOGNAME/ShellProject/$CURDB/$CURDB'.meta' | grep -x $tblName` ]];	then
+	# [/dev/null] is an empty and always empty file used to dump unnecessary data in it and it's gone for good
+	# i write the content of the null file (which is nothing) in the table .data file  
+		cat /dev/null > /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data'
+		print 'All good, press any key to go back'
+	else
+		print 'Invalid table name !!'
+	fi
+	read -s -n 1
+	delMenue
+
+}
+########## delete row #############
+function deleteRow
+{
+	clear
+	# description message
+	print 'This is a column dependent delete operations,'
+	print "You'll provide table name, column name and a value,"
+	print "If the given value matched an existing value in the given column the entire row will be deleted,"
+	print "If all good press any key to proceed . . ."
+	read -s -n 1
+	clear
+	print 'Enter table name ?'
+	read tblName
+	# checks if the table exists
+	if [[ `cut -f1 -d: /home/$LOGNAME/ShellProject/$CURDB/$CURDB'.meta' | grep -x $tblName` ]];	then
+		while true
+		do
+			clear
+			print 'Enter column name ?'
+			read colName
+	# see if the column name provided is exist 
+			if [[ `cut -f1 -d: /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | grep -x $colName` ]]; then
+	# get the column data type for further use
+				colDt=`sed -n "/^\<$colName\>/p" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | cut -d: -f2`
+	# get the column number in the table 
+				colNum=`sed -n "/^\<$colName\>/=" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'`
+				print 'enter a value to match ?'
+	# print column name aside with it's data type to help the user determine what to write 
+				echo -n "$colName [$colDt] : "
+	# the value to search with 
+				read value
+	# search with the value and get the matched row numbers 
+				toDelRowNum=`cut -f"$colNum" -d:  /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data' | sed -n "/^\<$value\>/="`
+	# if found any matched records
+				if [[ "$toDelRowNum" ]]; then
+	# loop over the [ toDolRowNum ] just in case a multiple rows matched the value
+					for lineNum in ${toDelRowNum[@]}
+					do
+	# append line numbers + [d;] in [ lineNumbers ] variable so that i can use them in sed to delete
+						lineNumbers="$lineNumbers""$lineNum"'d;'
+					done
+	# delete matched line numbers
+					sed -i "$lineNumbers" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data'
+	# empty the lineNumbers variable
+					lineNumbers=''
+					print 'All good, press any key to go back'
+					break
+				else
+					print 'No records matched the given value, nothing deleted'
+					break
+				fi
+			else
+				print 'Invalid column name'
+				read -s -n 1
+				continue
+			fi
+		done
+	else
+		print 'Invalid table name !!'
+	fi
+	read -s -n 1
+	delMenue	
 }
 ############## database specific operations menus ################
 ############ alter table menu ##############
@@ -549,6 +641,37 @@ function alterTbl
 		esac
 	done	
 }
+############ deleteMenu ###############
+function delMenue
+{
+	clear
+	# change the prompt 
+	PS3='Please enter your choice : '
+	# menu options 
+	options=("Delete All" "Delete Row" "Exit")
+	# drawing the menu
+	select option in "${options[@]}"
+	do
+		case $option in 
+			"Delete All" )
+				deleteAll						
+				break
+			;;
+			"Delete Row" )
+				deleteRow
+				break
+			;;
+			"Exit" )
+				clear
+				tblQuery
+				break
+			;;
+			* ) 
+				echo 'not a valid option'
+			;;
+		esac
+	done
+}
 ############ table Queries menu ################
 function tblQuery
 {
@@ -570,7 +693,7 @@ function tblQuery
 				break
 			;;
 			"Delete" )
-				
+				delMenue
 				break
 			;;
 			"Select" )
