@@ -7,9 +7,9 @@ $CURDB
 # TODO
 # 1- in createTbl function add more checks and validation on column name 
 #    like if the column name is the same as existing one etc
-# 2- also validate on the table name on createTbl function
-# 3- checks when creating table if it's already exist 
-# 4- checks when creating database if it's already exist
+# 2- also validate on the table name on createTbl function 
+# 3- checks when creating table if it's already exist (done)
+# 4- checks when creating database if it's already exist (done)
 # 5- ask the user if he wants to insert again instead of exiting after finishing editing
 ################# main menu functions ###################
 ################## Creating the database####################
@@ -18,10 +18,15 @@ function createDb
 	clear
 	print 'Please enter your database name ?'
 	read dbName
+	if [[ `cut -f1 -d: /home/$LOGNAME/ShellProject/metadata.all | grep -x $dbName` ]];	then	
+		print 'Database already exist'
+	else
 	# create a directory for the database and create the db metadata file
 	mkdir -p /home/$LOGNAME/ShellProject/$dbName
 	touch /home/$LOGNAME/ShellProject/$dbName/$dbName".meta"
 	echo $dbName":"$CURUSER >> /home/$LOGNAME/ShellProject/metadata.all
+	fi
+	read -s -n 1
 	clear
 	# return to the main menu
 	mainMenu
@@ -198,76 +203,80 @@ function createTbl
 	clear
 	print 'Please enter table name ?'
 	read tblName
-	print 'Please enter number of columns ?'
-	read columnsNo
+	if [[ `cut -f1 -d: /home/$LOGNAME/ShellProject/$CURDB/$CURDB'.meta' | grep -x $tblName` ]];	then
+		print 'table already exist'
+	else
+		print 'Please enter number of columns ?'
+		read columnsNo
 	# [typeset -i] makes the colCounter variable treated as integer value
-	typeset -i colCounter=1
+		typeset -i colCounter=1
 	# [typeset -A] declaring an associative array
 	# this for columns data type every datatype indexed by it's column name
-	typeset -A datatypesArr
+		typeset -A datatypesArr
 	# getting column informations 
-	while [[ $colCounter -le $columnsNo ]]; do
-		clear
-		print 'Enter column '$colCounter' name and datatype seperated by a space'
+		while [[ $colCounter -le $columnsNo ]]; do
+			clear
+			print 'Enter column '$colCounter' name and datatype seperated by a space'
 		# read column name and datatype into two seprate variables
-		read columnName columnDt
+			read columnName columnDt
 		# checks if the columns name like the table name 
-		if [[ $columnName != $tblName ]]; then
+			if [[ $columnName != $tblName ]]; then
 		# checks if the datatype is int or char 
 		# [[ condition ]] is not working when using -o or -a had to use test with if 
-			if test "$columnDt" = 'int' -o "$columnDt" = 'char' 
-		    then
+				if test "$columnDt" = 'int' -o "$columnDt" = 'char' 
+			    then
 		# add column name to the columns array
 		# and then add it's datatype to the datatypes arrray indexed by the column name
-				columnsArr[$colCounter]=$columnName
-				datatypesArr[$columnName]=$columnDt
+					columnsArr[$colCounter]=$columnName
+					datatypesArr[$columnName]=$columnDt
 		# increament the colCounter
-				((colCounter=colCounter+1))
-			else
+					((colCounter=colCounter+1))
+				else
 		# if invalid datatype is given 
-				print 'Invalid datatype'
-				print 'Avaliable Datatypes is "int" or "char" only'
-			fi
-		else
+					print 'Invalid datatype'
+					print 'Avaliable Datatypes is "int" or "char" only'
+				fi
+			else
 		# if invalid column name is given
-			print 'Invalid column name'
-		fi
-	done
+				print 'Invalid column name'
+			fi
+		done
 	# write the table name, number of column and user created the table to the database global .meta file
-	echo $tblName':'$columnsNo':'$CURUSER >> /home/$LOGNAME/ShellProject/$CURDB/$CURDB'.meta'
+		echo $tblName':'$columnsNo':'$CURUSER >> /home/$LOGNAME/ShellProject/$CURDB/$CURDB'.meta'
 	# creates .meta file for table metadata and .data file for the data
-	touch /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'
-	touch /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data'
+		touch /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'
+		touch /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data'
 	# write every columns and it's datatype to the table.meta file  
-	for column in ${columnsArr[@]}
-	do
-		echo $column':'${datatypesArr[$column]}':' >> /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'
-	done
+		for column in ${columnsArr[@]}
+		do
+			echo $column':'${datatypesArr[$column]}':' >> /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'
+		done
 	# setting a column as a primary key
 	# putting true in the while condition means infinite loop 
-	while true 
-	do
-		clear
-		print 'Select a column to be the primary key ?'
-		read primaryColumn
+		while true 
+		do
+			clear
+			print 'Select a column to be the primary key ?'
+			read primaryColumn
 	# search if the column name given is exist
-		if [[ `grep $primaryColumn /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'` ]]; then
+			if [[ `grep $primaryColumn /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'` ]]; then
 	# replace the line mathched with the search with the new line with "primary" word added at the end
 	# the regex means anyline [^] starts with given column name 
 	# put [:] to limit the resutlts to only lines that the givencolumn name is representing a whole field in it 
 	# [.*] and anything else after it [/] followed by the new line then [:primary] that represents a primary key column
-			sed -i 's/^'$primaryColumn':.*/'$primaryColumn':'${datatypesArr[$primaryColumn]}':primary/' /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' 	
+				sed -i 's/^'$primaryColumn':.*/'$primaryColumn':'${datatypesArr[$primaryColumn]}':primary/' /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' 	
 	# to break out the loop once found the desired column
-			break
-		else
+				break
+			else
 	# if invalid column name is provided it'll ask again 
-			print 'Column dosent exist, Press anykey to try again'
-			read -s -n 1
-		fi
-	done
-	clear
-	# completion message
-	print 'Table "'$tblName'" Created, Press anykey to go back !'
+				print 'Column dosent exist, Press anykey to try again'
+				read -s -n 1
+			fi
+		done
+		clear
+		# completion message
+		print 'Table "'$tblName'" Created, Press anykey to go back !'
+	fi
 	read -s -n 1
 	clear
 	# back to the database operations menu 
@@ -432,7 +441,11 @@ function insert
 {
 	clear
 	print 'Enter table name ?'
+	if [[ "$*" ]]; then
+		tblName="$1"
+	else
 	read tblName
+	fi
 	# if found the given table name in the data base 
 	if [[ `grep $tblName /home/$LOGNAME/ShellProject/$CURDB/$CURDB'.meta'` ]];	then
 	# loop over all columns names in the given table 
@@ -513,7 +526,6 @@ function insert
 	# first echo will echo the whole array in one line with space seperator between each element
 	# [tr ' ' ':'] will remove every space in the line and add [:] as a delimiter 
 	# then append the result in the table .data file as a new record 
-
 		echo ${values[@]} | tr ' ' ':' >> /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data'
 	# empty the values array 
 	# when i didnt empty the array it actually get declared once per script run so it holds all prevous values
@@ -609,6 +621,60 @@ function deleteRow
 	read -s -n 1
 	delMenue	
 }
+############# update record ################
+function updateRec
+{
+	print 'Enter table name ?'
+	read tblName
+	if [[ `cut -f1 -d: /home/$LOGNAME/ShellProject/$CURDB/$CURDB'.meta' | grep -x $tblName` ]];	then
+		while true
+		do
+			clear
+			print 'Enter column name ?'
+			read colName
+	# see if the column name provided is exist 
+			if [[ `cut -f1 -d: /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | grep -x $colName` ]]; then
+	# get the column data type for further use
+				colDt=`sed -n "/^\<$colName\>/p" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | cut -d: -f2`
+	# get the column number in the table 
+				colNum=`sed -n "/^\<$colName\>/=" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'`
+				print 'enter a value to match ?'
+	# print column name aside with it's data type to help the user determine what to write 
+				echo -n "$colName [$colDt] : "
+	# the value to search with 
+				read value
+	# search with the value and get the matched row numbers 
+				toUpdtRowNum=`cut -f"$colNum" -d:  /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data' | sed -n "/^\<$value\>/="`
+	# if found any matched records
+				if [[ "$toUpdtRowNum" ]]; then
+	# check if given value matched only one record 
+					if [[ `echo "$toUpdtRowNum" | sed -n '2p'` ]]; then
+						print 'Ambiguity, more than one matched record'
+						print 'Hint: try to use a unique value to limit the matched records'
+						read -s -n 1		
+					else
+	# delete the old record 
+						sed -i "$toUpdtRowNum"'d' /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data'
+	# get the new values and update the table
+						insert "$tblName"
+						break					
+					fi
+				else
+					print 'No records matched'
+					read -s -n 1
+					break
+				fi
+			else
+				print 'Invalid column name'
+				read -s -n 1
+				continue
+			fi
+		done
+	else
+		print 'Invalid table name'
+	fi
+	tblQuery
+}
 ############## database specific operations menus ################
 ############ alter table menu ##############
 function alterTbl
@@ -689,7 +755,7 @@ function tblQuery
 				break
 			;;
 			"Update" )
-				
+				updateRec
 				break
 			;;
 			"Delete" )
