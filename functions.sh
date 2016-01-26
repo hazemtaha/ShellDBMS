@@ -786,7 +786,9 @@ function alterTbl
 				echo 'not a valid option'
 			;;
 		esac
-	done	
+	done
+
+	return	
 }
 ############ deleteMenu ###############
 function delMenue
@@ -818,6 +820,8 @@ function delMenue
 			;;
 		esac
 	done
+
+	return
 }
 ############ select menu ##############
 function selectMenu
@@ -849,6 +853,8 @@ function selectMenu
 			;;
 		esac
 	done
+
+	return
 }
 ############ table Queries menu ################
 function tblQuery
@@ -887,7 +893,9 @@ function tblQuery
 				echo 'not a valid option'
 			;;
 		esac
-	done	
+	done
+
+	return	
 }
 ############ db specific main menu ##################
 function dbMenu
@@ -935,6 +943,8 @@ function dbMenu
 			;;
 		esac
 	done
+
+	return
 }
 ############# menu display function ############
 function mainMenu
@@ -976,4 +986,6 @@ function mainMenu
 			;;
 		esac
 	done
+
+	return
 }
