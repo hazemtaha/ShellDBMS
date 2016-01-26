@@ -12,6 +12,12 @@ $CURDB
 # 4- checks when creating database if it's already exist (done)
 # 5- ask the user if he wants to insert again instead of exiting after finishing editing
 # 6- in select all try to make a better looking output [customize font size and color and table borders]
+# 7- check when creating table if a column name entered twice [same as in 1]
+# 8- decrypt the password in the users file
+# 9- hide the password when written
+# 10- update specific column instead of replacing the whole row [update function]
+# 11- change column datatype 
+# 12- change primary key
 ################# main menu functions ###################
 ################## Creating the database####################
 function createDb
