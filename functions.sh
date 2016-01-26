@@ -14,10 +14,11 @@ $CURDB
 # 6- in select all try to make a better looking output [customize font size and color and table borders]
 # 7- check when creating table if a column name entered twice [same as in 1]
 # 8- decrypt the password in the users file
-# 9- hide the password when written
+# 9- hide the password when written (done)
 # 10- update specific column instead of replacing the whole row [update function]
 # 11- change column datatype 
 # 12- change primary key
+# 13- when add column add [:] at the end of every line (done)
 ################# main menu functions ###################
 ################## Creating the database####################
 function createDb
@@ -380,6 +381,9 @@ function addColumn
 	# increment the column number field of the given table name by 1
 					awk -F: -v var="$tblName" 'BEGIN{OFS=":"}{if($1==var)$2++;print}' /home/$LOGNAME/ShellProject/$CURDB/$CURDB'.meta.tmp' > /home/$LOGNAME/ShellProject/$CURDB/$CURDB'.meta'
 					rm /home/$LOGNAME/ShellProject/$CURDB/$CURDB'.meta.tmp'
+	# add to the end of every line in the table .data file a [:] to reserve a place for the new column
+	# [$] represent the end of the line sed will replace the end of every line with [:]
+					sed -i 's/$/:/' /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data'
 					print 'All good, press anykey to exit !'
 					break		
 				else

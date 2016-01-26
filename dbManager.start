@@ -6,9 +6,15 @@ export CURUSER=''
 print "Please enter username"
 read username
 print "Please enter password"
-read password
+# [stty] command used to change terminal settings 
+# when provide [-echo] with it disable the echo functionality 
+# so that when i enter the password it wont echoed back
+# then i enable it back again after reading the password with removing [-]
+stty -echo
+read PASSWORD
+stty echo
 # validate the user input 
-if test `grep $username /home/kan/ShellProject/usersInfo | cut -f2 -d: | grep -x $password`
+if test `grep $username /home/kan/ShellProject/usersInfo | cut -f2 -d: | grep -x $PASSWORD`
 then 
 	clear
 	CURUSER=$username
