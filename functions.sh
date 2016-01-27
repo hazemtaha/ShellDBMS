@@ -7,13 +7,13 @@ $CURDB
 # TODO
 # 1- in createTbl function add more checks and validation on column name 
 #    like if the column name is the same as existing one etc
-# 2- also validate on the table name on createTbl function 
+# 2-  
 # 3- checks when creating table if it's already exist (done)
 # 4- checks when creating database if it's already exist (done)
 # 5- ask the user if he wants to insert again instead of exiting after finishing editing
 # 6- in select all try to make a better looking output [customize font size and color and table borders]
 # 7- check when creating table if a column name entered twice [same as in 1]
-# 8- decrypt the password in the users file
+# 8- hash the password in the users file (done)
 # 9- hide the password when written (done)
 # 10- update specific column instead of replacing the whole row [update function]
 # 11- change column datatype 
@@ -137,7 +137,11 @@ function addUser
 	# if it's not in userinfo file (not a user already)
 		print 'Enter password ?'
 		read password
-		# write new user information in userinfo file
+	# hash the password to store it 
+	# i used [-n] with echo bcuz echo by default print a new line and that will be hashed with the password
+	# i used [cut] bcuz the output from sha256sum is followed by space and - at the end but i need the hash only 
+		password=`echo -n $password | sha256sum | cut -f1 -d' '`
+	# write new user information in userinfo file
 		echo $username":"$password >> /home/$LOGNAME/ShellProject/usersInfo
 		print "\""$username"\" Created, Press anykey to get back"		
 	fi

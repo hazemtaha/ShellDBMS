@@ -13,6 +13,8 @@ print "Please enter password"
 stty -echo
 read PASSWORD
 stty echo
+# hash the password to validate it 
+PASSWORD=`echo -n $PASSWORD | sha256sum`
 # validate the user input 
 if test `grep $username /home/kan/ShellProject/usersInfo | cut -f2 -d: | grep -x $PASSWORD`
 then 
