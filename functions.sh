@@ -10,7 +10,7 @@ $CURDB
 # 2- make a better looking gui 
 # 3- checks when creating table if it's already exist (done)
 # 4- checks when creating database if it's already exist (done)
-# 5- 
+# 5- checks if the column is unique or not (have duplicated values)
 # 6- in select all try to make a better looking output [customize font size and color and table borders]
 # 7- 
 # 8- hash the password in the users file (done)
