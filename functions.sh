@@ -7,17 +7,17 @@ $CURDB
 # TODO
 # 1- in createTbl function add more checks and validation on column name 
 #    like if the column name is the same as existing one etc
-# 2-  
+# 2- make a better looking gui 
 # 3- checks when creating table if it's already exist (done)
 # 4- checks when creating database if it's already exist (done)
-# 5- ask the user if he wants to insert again instead of exiting after finishing editing
+# 5- 
 # 6- in select all try to make a better looking output [customize font size and color and table borders]
-# 7- check when creating table if a column name entered twice [same as in 1]
+# 7- 
 # 8- hash the password in the users file (done)
 # 9- hide the password when written (done)
 # 10- update specific column instead of replacing the whole row [update function]
 # 11- change column datatype 
-# 12- change primary key
+# 12- change primary key (done)
 # 13- when add column add [:] at the end of every line (done)
 ################# main menu functions ###################
 ################## Creating the database####################
@@ -34,6 +34,7 @@ function createDb
 	touch /home/$LOGNAME/ShellProject/$dbName/$dbName".meta"
 	echo $dbName":"$CURUSER >> /home/$LOGNAME/ShellProject/metadata.all
 	fi
+	echo 'All good, Press anykey to go back'
 	read -s -n 1
 	clear
 	# return to the main menu
@@ -451,12 +452,95 @@ function delCol
 	read -s -n 1
 	alterTbl
 }
+################# change primary key ###############
+function changePK
+{
+	clear
+	print 'Enter table name ?'
+	read tblName
+	# if found the given table name in the data base 
+	if [[ `grep $tblName /home/$LOGNAME/ShellProject/$CURDB/$CURDB'.meta'` ]];	then
+		clear
+		print 'Enter the column name to be the new primary key ?'
+	# read column name 
+		read colName
+	# see if the column name is already exist 
+	# used [grep -x] to match the exact name 
+		if [[ `cut -f1 -d: /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | grep -x $colName` ]]; then
+	# checks if the given column is already a primary key column 
+	# if the output of this command equal empty string it means it's not a primary key column so it'll proceed 		
+			if [[ `sed -n "/^\<$colName\>/p" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | cut -d: -f3` == '' ]]; then
+	# get the column number in the table to use it later
+				colNum=`sed -n "/^\<$colName\>/=" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'`
+	# check if the chosen column is empty or not 
+				if [[ `cut -f"$colNum" -d: /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data'` ]]; then
+					# it it's not empty 
+					clear
+					print "You're about to set a non empty column to be a primary key,\nDoing so will result to deletion of the column's entire data" 
+					echo -n "Are you sure you want to continue ?? [y/n] : "
+					# read the user answer
+					read -n 1 answer 
+				else
+					# if it's an empty column
+					clear
+				    echo "You are about make the [$colName] column the new primary key"
+				    echo -n "Are you sure you want to continue ?? [y/n] : "
+				    # read the user answer
+				    read -n 1 answer	
+				fi
+	# if user chosed to proceed
+				if [[ "$answer" == 'y' ]]; then
+	# make a temp copy of the table .meta file to work on it
+					cp /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta.tmp' 
+	# delete the [primary] key word from the third column 
+					cut -d: -f3 --complement /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta.tmp' > /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'
+	# remove the .tmp file we created earlier 
+					rm /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta.tmp'
+	# when performint the earlier [cut] there will be no third column 
+	# so this [sed] command will add [:] to the end of every line in the .meta file so to have a third column
+					sed -i 's/$/:/' /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'
+	# add the [primary] key word to the desired column (to be the new primary key column)
+	# this command will add to the end of matched line the word [primary]
+					sed -i "/^\<$colName\>/ s/$/primary/" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'
+	# make a temp copy from the table .data file
+					cp /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data' /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data.tmp' 
+	# empty the new primary key column from any data
+					awk -F: -v var="$colNum" 'BEGIN{OFS=":"}{$var="";print}' /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data.tmp' > /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data'
+	# remove the .tmp file
+					rm /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data.tmp'		
+					clear
+					print "Done, [$colName] is the new primary key column \nPress any key to go back"
+					read -n 1
+				else
+					clear
+					echo 'Nothing changed, Press any key to go back'
+					read -n 1
+				fi
+			else
+				clear
+				echo 'This column is already the primary key'
+				read -n 1
+			fi
+		else
+			print 'Column not exist'
+			read -n 1
+		fi
+	else
+		print 'Table not exist'
+		read -n 1
+	fi	
+
+	alterTbl
+}
 #################### insert #########################
 function insert 
 {
 	clear
 	print 'Enter table name ?'
+	# checks if any parameters passed to the insert function 
+	# [$*] contains all parameters if it's null then no parameters passed
 	if [[ "$*" ]]; then
+	# if a parameter is passed assign it's value to the [tblName] variable
 		tblName="$1"
 	else
 	read tblName
@@ -778,7 +862,7 @@ function alterTbl
 	# change the prompt 
 	PS3='Please enter your choice : '
 	# menu options 
-	options=("Add Column" "Delete Column" "Exit")
+	options=("Add Column" "Delete Column" "Change Primary Key" "Change Column Datatype" "Exit")
 	# drawing the menu
 	select option in "${options[@]}"
 	do
@@ -789,6 +873,14 @@ function alterTbl
 			;;
 			"Delete Column" )
 				delCol
+				break
+			;;
+			"Change Primary Key" )
+				changePK
+				break
+			;;
+			"Change Column Datatype" )
+				
 				break
 			;;
 			"Exit" )
