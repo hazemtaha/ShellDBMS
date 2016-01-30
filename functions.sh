@@ -6,7 +6,7 @@ $CURDB
 #############################################################  
 # TODO
 # 1- in createTbl function add more checks and validation on column name 
-#    like if the column name is the same as existing one etc
+#    like if the column name is the same as existing one etc (done)
 # 2- make a better looking gui 
 # 3- checks when creating table if it's already exist (done)
 # 4- checks when creating database if it's already exist (done)
@@ -240,10 +240,16 @@ function createTbl
 			    then
 		# add column name to the columns array
 		# and then add it's datatype to the datatypes arrray indexed by the column name
-					columnsArr[$colCounter]=$columnName
-					datatypesArr[$columnName]=$columnDt
+					if [[ `echo ${columnsArr[@]} | tr ' ' '\n' | grep -x "$columnName"` ]]; then
+						print 'Columns names must be unique, This namae already exist'
+						read -n 1
+						continue
+					else
+						columnsArr[$colCounter]=$columnName
+						datatypesArr[$columnName]=$columnDt
 		# increament the colCounter
-					((colCounter=colCounter+1))
+						((colCounter=colCounter+1))
+					fi
 				else
 		# if invalid datatype is given 
 					print 'Invalid datatype'
