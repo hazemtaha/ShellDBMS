@@ -10,15 +10,16 @@ $CURDB
 # 2- make a better looking gui 
 # 3- checks when creating table if it's already exist (done)
 # 4- checks when creating database if it's already exist (done)
-# 5- checks if the column is unique or not (have duplicated values)
+# 5- checks if the column is unique or not (have duplicated values) for change Pk and Dt functions
 # 6- in select all try to make a better looking output [customize font size and color and table borders]
-# 7- insert in certain column
+# 7- insert in certain column (done)
 # 8- hash the password in the users file (done)
 # 9- hide the password when written (done)
-# 10- update specific column instead of replacing the whole row [update function]
-# 11- change column datatype 
+# 10- update specific column instead of replacing the whole row [update function] (done)
+# 11- change column datatype (done)
 # 12- change primary key (done)
 # 13- when add column add [:] at the end of every line (done)
+# 14- when user [while true] ask the user if he want to exit 
 ################# main menu functions ###################
 ################## Creating the database####################
 function createDb
@@ -806,7 +807,7 @@ function deleteRow
 	delMenue	
 }
 ############# update record ################
-function updateRec
+function replaceRow
 {
 	print 'Enter table name ?'
 	read tblName
@@ -858,6 +859,97 @@ function updateRec
 		print 'Invalid table name'
 	fi
 	tblQuery
+}
+########## update row ##########
+function updateRow
+{
+	print 'Enter table name ?'
+	read tblName
+	if [[ `cut -f1 -d: /home/$LOGNAME/ShellProject/$CURDB/$CURDB'.meta' | grep -x $tblName` ]];	then
+		while true
+		do
+			clear
+			print 'Enter column name to search into it ?'
+			read colName
+			print 'Enter column name to update ?'
+			read uColName
+	# checks if the column we want to update is a primary key or not
+			if [[ `sed -n "/^\<$uColName\>/p" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | cut -d: -f3` ]]; then
+				# indicate that the column is primary key
+				isUnique='true'
+			fi
+	# see if the columns names provided is exist  
+			if [[ `cut -f1 -d: /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | grep -x $colName` ]] && [[ `cut -f1 -d: /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | grep -x $uColName` ]]; then
+	# get the search column datatype
+				colDt=`sed -n "/^\<$colName\>/p" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | cut -d: -f2`
+	# get the update column datatype
+				uColDt=`sed -n "/^\<$uColName\>/p" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | cut -d: -f2` 
+	# get the search column number in the table 
+				colNum=`sed -n "/^\<$colName\>/=" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'`
+	# get the update column number in the table
+				uColNum=`sed -n "/^\<$uColName\>/=" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'`
+				clear
+				print 'enter a search key word ?'
+	# print column name aside with it's data type to help the user determine what to write 
+				echo -n "$colName [$colDt] : "
+	# the value to search with 
+				read value
+	# search with the value and get the matched row numbers 
+				toUpdtRowNum=`cut -f"$colNum" -d:  /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data' | sed -n "/^\<$value\>/="`
+				echo "Enter the new value "
+				echo -n "$uColName [$uColDt] : "
+	# get the new value that will replace the old update column value
+				read nValue
+	# if found any matched records
+				if [[ "$toUpdtRowNum" ]]; then
+	# if the update column provided is a primary key column and the search resul is more than one record 
+					if [[ `echo "$toUpdtRowNum" | sed -n '2p'` ]] && [[ $isUnique == 'true' ]]; then
+						clear
+						print 'More than one match,\nPrimary key column cant have duplicated values\nHint: try to use unique values in search to limit the matched records'
+						read -n 1
+						# skip everything and read a new value from the user
+						continue
+	# if the column is primary key and the given new value exist before
+					elif [[ $isUnique == 'true' ]] && [[ `cut -f"$uColNum" -d: /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data' | grep -x "$nValue"` ]]; then
+						clear
+						print 'Primary key columns are unique identifiers that cant have duplicated values'
+						read -n 1	
+						# read again
+						continue
+					fi
+	# loop over matched records array which contains the line numbers of all matched records
+					for col in ${toUpdtRowNum[@]}
+					do
+	# make a temp file from the table .data file
+						cp /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data' /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data.tmp'
+	# replace the value of desired column in each matched line with the new given value 
+						awk -F: -v colNumber="$uColNum" -v lineNumber="$col" -v val="$nValue" 'BEGIN{OFS=":"}{if(NR==lineNumber)$colNumber=val;print}' /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data.tmp' > /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data'
+	# replace the temp file
+						rm /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data.tmp'
+					done
+					clear
+					print 'All good, Press any key to go back'
+					break	 
+				else
+					clear
+					print 'No records matched'
+					break
+				fi
+			else
+				clear
+				print 'Invalid column name'
+				read -s -n 1
+				continue
+			fi
+		done
+	else
+		clear
+		print 'Invalid table name'
+	fi
+	read -n 1
+	# empty the variable in case the update function used again
+	isUnique=''
+	updateMenu	
 }
 ############## select all function ########################
 function selectAll
@@ -1047,6 +1139,39 @@ function selectMenu
 
 	return
 }
+###################### update menu ################
+function updateMenu
+{
+clear
+	# change the prompt 
+	PS3='Please enter your choice : '
+	# menu options 
+	options=("Update Row" "Replace Row" "Exit")
+	# drawing the menu
+	select option in "${options[@]}"
+	do
+		case $option in 
+			"Update Row" )
+				updateRow
+				break
+			;;
+			"Replace Row" )
+				replaceRow
+				break
+			;;
+			"Exit" )
+				clear
+				dbMenu
+				break
+			;;
+			* ) 
+				echo 'not a valid option'
+			;;
+		esac
+	done
+
+	return	
+}
 ############ table Queries menu ################
 function tblQuery
 {
@@ -1064,7 +1189,7 @@ function tblQuery
 				break
 			;;
 			"Update" )
-				updateRec
+				updateMenu
 				break
 			;;
 			"Delete" )
