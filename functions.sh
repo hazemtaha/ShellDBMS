@@ -12,7 +12,7 @@ $CURDB
 # 4- checks when creating database if it's already exist (done)
 # 5- checks if the column is unique or not (have duplicated values)
 # 6- in select all try to make a better looking output [customize font size and color and table borders]
-# 7- 
+# 7- insert in certain column
 # 8- hash the password in the users file (done)
 # 9- hide the password when written (done)
 # 10- update specific column instead of replacing the whole row [update function]
@@ -452,7 +452,7 @@ function delCol
 	read -s -n 1
 	alterTbl
 }
-################# change primary key ###############
+################# change primary key function ###############
 function changePK
 {
 	clear
@@ -530,6 +530,85 @@ function changePK
 		read -n 1
 	fi	
 
+	alterTbl
+}
+########## change column datatype ################
+function changeDt
+{
+	clear
+	print 'Enter table name ?'
+	read tblName
+	# if found the given table name in the data base 
+	if [[ `grep $tblName /home/$LOGNAME/ShellProject/$CURDB/$CURDB'.meta'` ]];	then
+		clear
+		print  "Enter column name and it's new datatype seperated by a space "
+	# read column name 
+		read colName colDt	
+	# see if the column name is already exist 
+	# used [grep -x] to match the exact name 
+		if [[ `cut -f1 -d: /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | grep -x $colName` ]]; then
+			if [[ "$colDt" == 'int' ]] || [[ "$colDt" == 'char' ]]; then
+				if [[ `sed -n "/^\<$colName\>/p" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | cut -d: -f2` == "$colDt" ]]; then
+					print "Column [$colName] is already of [$colDt] datatype"
+				else
+	# checks if the given column is already a primary key column 
+	# if the output of this command equal empty string it means it's not a primary key column so it'll proceed 		
+					if [[ `sed -n "/^\<$colName\>/p" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' | cut -d: -f3` == '' ]]; then
+	# get the column number in the table to use it later
+						colNum=`sed -n "/^\<$colName\>/=" /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'`
+	# check if the chosen column is empty or not 
+						if [[ `cut -f"$colNum" -d: /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data'` ]]; then
+							# it it's not empty 
+							clear
+							print "You're about change a non empty column datatype,\nDoing so will result to deletion of the column's entire data" 
+							echo -n "Are you sure you want to continue ?? [y/n] : "
+							# read the user answer
+							read -n 1 answer 
+						else
+							# if it's an empty column
+							clear
+				   		 	echo "You are about change the [$colName] column datatype to be [$colDt] "
+				   		 	echo -n "Are you sure you want to continue ?? [y/n] : "
+				    		# read the user answer
+				    		read -n 1 answer	
+						fi
+						if [[ "$answer" == 'y' ]]; then
+	# make a temp copy from the table .data file
+							cp /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data' /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data.tmp' 
+	# empty the column from any data
+							awk -F: -v var="$colNum" 'BEGIN{OFS=":"}{$var="";print}' /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data.tmp' > /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data'
+	# Remove the .tmp file
+							rm /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data.tmp'
+	# make a temp copy from the table .meta file
+							cp /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta' /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta.tmp' 
+	# replace the datatype for the desired column to the new one
+							awk -F: -v columnNm="$colName" -v columnDt="$colDt" 'BEGIN{OFS=":"}{if($1==columnNm)$2=columnDt;print}' /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta.tmp' > /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta'
+	# remove the .tmp file
+							rm /home/$LOGNAME/ShellProject/$CURDB/$tblName'.meta.tmp'
+							clear 
+							print "All good column [$colName] new datatype is [$colDt]"
+						else
+							clear
+							print 'Nothing changed, Press any key to go back'	
+						fi
+					else
+					clear
+					print 'You cant change the datatype of a primary key column'
+					fi
+				fi
+			else
+				clear
+				print 'Invalid datatype'
+			fi
+		else
+			clear
+			print 'Column not exist'
+		fi
+	else
+		clear
+		print "Table not exist"
+	fi
+	read -n 1
 	alterTbl
 }
 #################### insert #########################
@@ -880,7 +959,7 @@ function alterTbl
 				break
 			;;
 			"Change Column Datatype" )
-				
+				changeDt
 				break
 			;;
 			"Exit" )

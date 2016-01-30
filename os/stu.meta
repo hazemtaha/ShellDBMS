@@ -1,4 +1,4 @@
 id:int:
 name:char:primary
 email:char:
-gender:int:
+gender:char:
