@@ -136,7 +136,7 @@ function addUser
 	if [[ `grep $username /home/$LOGNAME/ShellProject/usersInfo` ]]; then
 		print 'User already exist'
 	else
-	# if it's not in userinfo file (not a user already)
+	# if it's not in user0.info file (not a user already)
 		print 'Enter password ?'
 		read password
 	# hash the password to store it 
@@ -829,7 +829,9 @@ function replaceRow
 	# the value to search with 
 				read value
 	# search with the value and get the matched row numbers 
-				toUpdtRowNum=`cut -f"$colNum" -d:  /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data' | sed -n "/^\<$value\>/="`
+				toUpdtRowNum=`cut -f"$colNum" -d:  /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data' |  sed -n "/^\<$value\>$/="`
+				echo $toUpdtRowNum
+				read 
 	# if found any matched records
 				if [[ "$toUpdtRowNum" ]]; then
 	# check if given value matched only one record 
@@ -858,7 +860,7 @@ function replaceRow
 	else
 		print 'Invalid table name'
 	fi
-	tblQuery
+	updateMenu
 }
 ########## update row ##########
 function updateRow
@@ -895,7 +897,7 @@ function updateRow
 	# the value to search with 
 				read value
 	# search with the value and get the matched row numbers 
-				toUpdtRowNum=`cut -f"$colNum" -d:  /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data' | sed -n "/^\<$value\>/="`
+				toUpdtRowNum=`cut -f"$colNum" -d:  /home/$LOGNAME/ShellProject/$CURDB/$tblName'.data' | sed -n "/^\<$value\>$/="`
 				echo "Enter the new value "
 				echo -n "$uColName [$uColDt] : "
 	# get the new value that will replace the old update column value
